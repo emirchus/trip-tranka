@@ -30,6 +30,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   allowedDevOrigins: ["127.0.0.1"],
+  redirects: async () => {
+    return [
+      {
+        source: "/",
+        destination: "https://tranka.app",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
