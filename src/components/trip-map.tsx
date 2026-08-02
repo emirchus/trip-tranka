@@ -11,6 +11,7 @@ import {
   TileLayer,
   Tooltip,
   useMap,
+  ZoomControl,
 } from "react-leaflet";
 import type { RedeemedTrip, RoutePoint } from "@/lib/trip-contracts";
 
@@ -36,6 +37,20 @@ function Recenter({
   return null;
 }
 
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => map.invalidateSize());
+    const onResize = () => map.invalidateSize();
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [map]);
+  return null;
+}
+
 export default function TripMap({
   trip,
   route,
@@ -55,10 +70,12 @@ export default function TripMap({
   ]);
   const currentLocationIcon = divIcon({
     className: "current-location-marker",
-    html: '<span aria-hidden="true"></span>',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    html: '<span class="current-location-pulse" aria-hidden="true"></span><span class="current-location-dot" aria-hidden="true"></span>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
+  const originLabel =
+    trip.origin.address.split(",")[0]?.trim() || trip.origin.address;
 
   return (
     <div className="map-shell">
@@ -68,40 +85,54 @@ export default function TripMap({
         scrollWheelZoom
         className="trip-map"
         attributionControl
+        zoomControl={false}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           subdomains="abcd"
         />
+        <ZoomControl position="bottomright" />
         {polyline.length > 1 && (
           <Polyline
             positions={polyline}
-            pathOptions={{ color: "#347FC4", weight: 5, opacity: 0.82 }}
+            pathOptions={{
+              color: "#1F4E79",
+              weight: 5,
+              opacity: 0.9,
+              dashArray: "10 12",
+              lineCap: "round",
+            }}
           />
         )}
         <CircleMarker
           center={[trip.origin.latitude, trip.origin.longitude]}
-          radius={7}
+          radius={8}
           pathOptions={{
-            color: "#1F2328",
-            fillColor: "#F6D86B",
+            color: "#1F4E79",
+            weight: 3,
+            fillColor: "#ffffff",
             fillOpacity: 1,
           }}
         >
-          <Tooltip>{trip.origin.address}</Tooltip>
+          <Tooltip permanent direction="top" offset={[0, -10]}>
+            {originLabel}
+          </Tooltip>
         </CircleMarker>
         {currentWaypoint && (
           <CircleMarker
             center={[currentWaypoint.latitude, currentWaypoint.longitude]}
-            radius={9}
+            radius={8}
             pathOptions={{
-              color: "#1F2328",
-              fillColor: "#E89A4A",
+              color: "#1F4E79",
+              weight: 3,
+              fillColor: "#ffffff",
               fillOpacity: 1,
             }}
           >
-            <Tooltip>{currentWaypoint.name}</Tooltip>
+            <Tooltip permanent direction="top" offset={[0, -10]}>
+              {currentWaypoint.name}
+            </Tooltip>
           </CircleMarker>
         )}
         {latest && (
@@ -113,6 +144,7 @@ export default function TripMap({
           </Marker>
         )}
         <Recenter location={center} request={recenterRequest} />
+        <InvalidateSize />
       </MapContainer>
       <button
         type="button"
