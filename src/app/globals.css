@@ -80,6 +80,7 @@ a:focus-visible {
 .viewer-shell:has(.viewer-layout) {
   min-height: 100dvh;
   height: 100dvh;
+  max-height: 100dvh;
   padding: 0;
   overflow: hidden;
   place-items: stretch;
@@ -87,7 +88,7 @@ a:focus-visible {
 }
 
 .viewer-layout {
-  --sheet-peek: 158px;
+  --sheet-visible: 0px;
   position: relative;
   width: 100%;
   height: 100%;
@@ -263,25 +264,25 @@ a:focus-visible {
 .map-heading {
   position: absolute;
   top: max(12px, env(safe-area-inset-top));
-  left: 12px;
   right: 12px;
+  left: auto;
   z-index: 500;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   align-items: center;
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 12px;
   color: var(--ink);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  border-radius: 16px;
+  border-radius: 999px;
   box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
   backdrop-filter: blur(10px);
 }
 
-.map-heading > span:first-child {
-  display: flex;
+.map-heading-title {
+  display: none;
   gap: 8px;
   align-items: center;
   font-size: 0.92rem;
@@ -294,7 +295,7 @@ a:focus-visible {
 
 .map-waiting {
   position: absolute;
-  top: calc(max(12px, env(safe-area-inset-top)) + 58px);
+  top: calc(max(12px, env(safe-area-inset-top)) + 52px);
   left: 12px;
   right: 12px;
   z-index: 500;
@@ -353,18 +354,26 @@ a:focus-visible {
   z-index: 700;
   display: flex;
   flex-direction: column;
-  max-height: var(--sheet-peek);
+  height: min(85dvh, 720px);
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--line);
   border-bottom: 0;
   border-radius: 24px 24px 0 0;
-  box-shadow: 0 -16px 48px rgba(15, 23, 32, 0.28);
-  transition: max-height 280ms ease;
+  box-shadow: 0 -12px 40px rgba(15, 23, 32, 0.22);
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translate3d(0, var(--sheet-ty, 100%), 0);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+  touch-action: none;
+}
+
+.viewer-sheet.is-dragging {
+  transition: none;
 }
 
 .viewer-sheet.is-open {
-  max-height: min(82dvh, 720px);
+  box-shadow: 0 -16px 48px rgba(15, 23, 32, 0.32);
 }
 
 .sheet-scrim {
@@ -373,19 +382,36 @@ a:focus-visible {
   z-index: 650;
   padding: 0;
   border: 0;
-  background: rgba(10, 14, 20, 0.28);
+  background: #0a0e14;
   cursor: pointer;
+  transition: opacity 180ms ease;
+}
+
+.sheet-grab {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  appearance: none;
+}
+
+.sheet-grab:active {
+  cursor: grabbing;
 }
 
 .sheet-handle-hit {
   display: flex;
   width: 100%;
   justify-content: center;
-  padding: 10px 0 4px;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
+  padding: 10px 0 2px;
 }
 
 .sheet-handle {
@@ -400,17 +426,15 @@ a:focus-visible {
   gap: 12px;
   align-items: center;
   width: 100%;
-  padding: 4px 16px 14px;
+  padding: 6px 16px 14px;
   color: inherit;
   text-align: left;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
 }
 
 .sheet-summary .avatar {
   width: 48px;
   height: 48px;
+  border-width: 2px;
 }
 
 .sheet-summary-copy {
@@ -424,34 +448,38 @@ a:focus-visible {
 
 .sheet-summary-copy strong {
   display: block;
+  overflow: hidden;
   font-size: 1.05rem;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sheet-summary-copy > span {
   display: block;
   margin-top: 3px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sheet-body {
-  display: none;
+  display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
-  padding: 0 16px calc(18px + env(safe-area-inset-bottom));
+  padding: 4px 16px 18px;
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
-.viewer-sheet.is-open .sheet-body {
-  display: flex;
-}
-
-.viewer-sheet.is-open .sheet-summary {
+.map-shell .leaflet-tooltip-pane {
   display: none;
 }
 
@@ -495,12 +523,29 @@ a:focus-visible {
   border-radius: 18px;
 }
 
+.viewer-sheet .progress-card,
+.viewer-sheet .shared-card {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.viewer-sheet .stat-card {
+  background: color-mix(in srgb, var(--background) 70%, var(--surface));
+}
+
 .progress-card-head {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
   margin-bottom: 16px;
+}
+
+.viewer-sheet .progress-card-head {
+  margin-bottom: 14px;
 }
 
 .progress-card-head h2 {
@@ -680,7 +725,7 @@ a:focus-visible {
 
 .map-shell .leaflet-bottom.leaflet-right {
   right: 10px;
-  bottom: calc(var(--sheet-peek, 12px) + 12px);
+  bottom: calc(var(--sheet-visible, 140px) + 12px);
 }
 
 .map-shell .leaflet-bar {
@@ -706,7 +751,7 @@ a:focus-visible {
   position: absolute;
   z-index: 500;
   right: 12px;
-  bottom: calc(var(--sheet-peek, 12px) + 12px);
+  bottom: calc(var(--sheet-visible, 140px) + 12px);
   display: grid;
   width: 40px;
   height: 40px;
@@ -1070,7 +1115,7 @@ a:focus-visible {
   }
 
   .viewer-layout {
-    --sheet-peek: 12px;
+    --sheet-visible: 12px;
     width: min(100%, 1180px);
     height: auto;
     display: grid;
@@ -1111,6 +1156,9 @@ a:focus-visible {
 
   .map-heading {
     position: static;
+    left: auto;
+    right: auto;
+    justify-content: space-between;
     padding: 0;
     background: transparent;
     border: 0;
@@ -1119,10 +1167,18 @@ a:focus-visible {
     backdrop-filter: none;
   }
 
+  .map-heading-title {
+    display: flex;
+  }
+
   .map-waiting {
     position: static;
     padding: 0;
     background: transparent;
+  }
+
+  .map-shell .leaflet-tooltip-pane {
+    display: block;
   }
 
   .map-shell {
@@ -1138,35 +1194,49 @@ a:focus-visible {
 
   .viewer-sheet,
   .viewer-sheet.is-peek,
-  .viewer-sheet.is-open {
+  .viewer-sheet.is-open,
+  .viewer-sheet.is-dragging {
     position: static;
-    max-height: none;
+    height: auto;
     overflow: visible;
     background: transparent;
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    padding-bottom: 0;
+    transform: none;
     transition: none;
+    touch-action: auto;
+    will-change: auto;
   }
 
-  .sheet-body,
-  .viewer-sheet.is-open .sheet-body,
-  .viewer-sheet.is-peek .sheet-body {
+  .viewer-layout .sheet-scrim {
+    display: none;
+  }
+
+  .sheet-body {
     display: flex;
+    flex: none;
     padding: 0;
     overflow: visible;
+    touch-action: auto;
   }
 
-  .progress-card,
-  .stat-card,
-  .shared-card {
+  .viewer-sheet .progress-card,
+  .viewer-sheet .shared-card {
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
     box-shadow: 0 8px 28px rgba(40, 75, 100, 0.06);
   }
 
+  .viewer-sheet .stat-card,
   .stat-card,
   .progress-card,
   .shared-card {
     background: var(--surface);
+    box-shadow: 0 8px 28px rgba(40, 75, 100, 0.06);
   }
 
   .viewer-footer {

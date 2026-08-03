@@ -21,6 +21,7 @@ type TripMapProps = {
   recenterRequest: number;
   recenterLabel: string;
   onRecenter: () => void;
+  layoutTick?: number;
 };
 
 function Recenter({
@@ -37,17 +38,20 @@ function Recenter({
   return null;
 }
 
-function InvalidateSize() {
+function InvalidateSize({ layoutTick = 0 }: { layoutTick?: number }) {
   const map = useMap();
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => map.invalidateSize());
+    const frame = window.requestAnimationFrame(() => {
+      void layoutTick;
+      map.invalidateSize();
+    });
     const onResize = () => map.invalidateSize();
     window.addEventListener("resize", onResize);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", onResize);
     };
-  }, [map]);
+  }, [map, layoutTick]);
   return null;
 }
 
@@ -57,6 +61,7 @@ export default function TripMap({
   recenterRequest,
   recenterLabel,
   onRecenter,
+  layoutTick = 0,
 }: TripMapProps) {
   const latest = trip.snapshot.latestLocation;
   const currentWaypoint =
@@ -144,7 +149,7 @@ export default function TripMap({
           </Marker>
         )}
         <Recenter location={center} request={recenterRequest} />
-        <InvalidateSize />
+        <InvalidateSize layoutTick={layoutTick} />
       </MapContainer>
       <button
         type="button"

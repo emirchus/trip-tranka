@@ -14,6 +14,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TripBottomSheet } from "@/components/trip-bottom-sheet";
 import { copyFor, type TrankaLocale } from "@/lib/i18n";
 import { saveShareUrl, subscribeToArrival } from "@/lib/push";
 import { redeemTrip } from "@/lib/redeem-trip";
@@ -310,7 +311,7 @@ export function TripViewer({ locale }: { locale: TrankaLocale }) {
         <div className="viewer-map-column">
           <div className="map-panel">
             <div className="map-heading">
-              <span>
+              <span className="map-heading-title">
                 <MapPinned aria-hidden="true" size={18} />
                 {copy.mapTitle}
               </span>
@@ -327,187 +328,170 @@ export function TripViewer({ locale }: { locale: TrankaLocale }) {
               route={route}
               recenterRequest={recenterRequest}
               recenterLabel={copy.recenter}
+              layoutTick={sheetOpen ? 1 : 0}
               onRecenter={() => setRecenterRequest((value) => value + 1)}
             />
           </div>
         </div>
 
-        {sheetOpen && (
-          <button
-            type="button"
-            className="sheet-scrim"
-            aria-label={copy.sheetCollapse}
-            onClick={() => setSheetOpen(false)}
-          />
-        )}
-
-        <aside className={`viewer-sheet${sheetOpen ? " is-open" : " is-peek"}`}>
-          <button
-            type="button"
-            className="sheet-handle-hit viewer-mobile-only"
-            aria-label={sheetOpen ? copy.sheetCollapse : copy.sheetExpand}
-            onClick={() => setSheetOpen((value) => !value)}
-          >
-            <span className="sheet-handle" aria-hidden="true" />
-          </button>
-
-          <button
-            type="button"
-            className="sheet-summary viewer-mobile-only"
-            onClick={() => setSheetOpen(true)}
-          >
-            <Avatar
-              name={trip.identity.displayName}
-              url={trip.identity.avatarUrl}
-            />
-            <div className="sheet-summary-copy">
-              <p className="eyebrow">
-                <span
-                  className={`live-dot ${isLive ? "" : "muted"}`}
-                  aria-hidden="true"
-                />
-                {isLive ? copy.live : copy.reconnecting}
-              </p>
-              <strong>{status}</strong>
-              <span>
-                {etaMinutes != null
-                  ? copy.arrivingIn(etaMinutes)
-                  : `${copy.lastUpdate}: ${lastUpdated}`}
-              </span>
-            </div>
-          </button>
-
-          <div className="sheet-body">
-            <div className="progress-card">
-              <div className="progress-card-head">
-                <h2>{copy.tripInProgress}</h2>
-                <span
-                  className={`status-pill ${tripActive ? "is-active" : "is-done"}`}
-                >
-                  <span className="status-pill-dot" aria-hidden="true" />
-                  {tripActive ? copy.activeStatus : status}
-                </span>
-              </div>
-              <ol className="trip-timeline">
-                <li className="timeline-step is-done">
-                  <span className="timeline-icon" aria-hidden="true">
-                    <Send size={14} strokeWidth={2.25} />
-                  </span>
-                  <div>
-                    <small>{copy.departureDone}</small>
-                    <strong>{originLabel}</strong>
-                    <span>{departureLabel}</span>
-                  </div>
-                </li>
-                <li
-                  className={`timeline-step ${tripActive ? "is-current" : "is-done"}`}
-                >
-                  <span className="timeline-icon" aria-hidden="true">
-                    <Route size={14} strokeWidth={2.25} />
-                  </span>
-                  <div>
-                    <small>
-                      {trip.snapshot.status === "inside_alert_radius"
-                        ? copy.nextStop
-                        : copy.enRoute}
-                    </small>
-                    <strong>{status}</strong>
-                    <span className="timeline-accent">
-                      {etaMinutes != null
-                        ? copy.arrivingIn(etaMinutes)
-                        : lastUpdated}
-                    </span>
-                  </div>
-                </li>
-                <li
-                  className={`timeline-step ${tripActive ? "is-upcoming" : "is-done"}`}
-                >
-                  <span className="timeline-icon" aria-hidden="true">
-                    <MapPin size={14} strokeWidth={2.25} />
-                  </span>
-                  <div>
-                    <small>{copy.destination}</small>
-                    <strong>
-                      {shortPlaceName(waypoint.address ?? waypoint.name)}
-                    </strong>
-                    <span>{copy.etaAt(etaClockLabel)}</span>
-                  </div>
-                </li>
-              </ol>
-            </div>
-
-            <div className="stats-grid">
-              <div className="stat-card">
-                <Clock3 aria-hidden="true" size={18} />
-                <small>{copy.remainingTime}</small>
-                <strong>
-                  {etaMinutes != null ? copy.minutesShort(etaMinutes) : "—"}
-                </strong>
-              </div>
-              <div className="stat-card">
-                <Route aria-hidden="true" size={18} />
-                <small>{copy.distance}</small>
-                <strong>{formatDistance(trip.snapshot.distanceMeters)}</strong>
-              </div>
-            </div>
-
-            <div className="shared-card">
+        <TripBottomSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          expandLabel={copy.sheetExpand}
+          collapseLabel={copy.sheetCollapse}
+          summary={
+            <>
               <Avatar
                 name={trip.identity.displayName}
                 url={trip.identity.avatarUrl}
               />
-              <div>
-                <small>{copy.sharedBy}</small>
-                <strong>{trip.identity.displayName}</strong>
-              </div>
-              <ShieldCheck
-                className="shared-shield"
-                aria-hidden="true"
-                size={20}
-              />
-            </div>
-
-            <div className="notice">
-              <ShieldCheck aria-hidden="true" size={18} />
-              <p>{copy.liveDisclaimer}</p>
-            </div>
-
-            {showArrivalPush &&
-              (pushState === "enabled" ? (
-                <p className="push-success">
-                  <Bell aria-hidden="true" size={18} />
-                  <span>{copy.notifyEnabled}</span>
-                  <CheckCircle2
-                    className="push-check"
+              <div className="sheet-summary-copy">
+                <p className="eyebrow">
+                  <span
+                    className={`live-dot ${isLive ? "" : "muted"}`}
                     aria-hidden="true"
-                    size={20}
                   />
+                  {isLive ? copy.live : copy.reconnecting}
                 </p>
-              ) : (
-                <button
-                  type="button"
-                  className="primary-action"
-                  disabled={pushState === "subscribing" || isIosBrowser}
-                  onClick={subscribe}
-                >
-                  <Bell aria-hidden="true" size={20} />
-                  {pushState === "denied" ? copy.notifyDenied : copy.notify}
-                </button>
-              ))}
-            {showArrivalPush && isIosBrowser && (
-              <p className="ios-note">{copy.iosInstall}</p>
-            )}
-
-            <footer className="viewer-footer">
-              <BrandLockup />
-              <div className="legal-links">
-                <Link href="/privacidad">{copy.privacy}</Link>
-                <span aria-hidden="true">·</span>
-                <Link href="/terminos">{copy.terms}</Link>
+                <strong>{status}</strong>
+                <span>
+                  {etaMinutes != null
+                    ? copy.arrivingIn(etaMinutes)
+                    : `${copy.lastUpdate}: ${lastUpdated}`}
+                </span>
               </div>
-            </footer>
+            </>
+          }
+        >
+          <div className="progress-card">
+            <div className="progress-card-head">
+              <h2>{copy.tripInProgress}</h2>
+              <span
+                className={`status-pill ${tripActive ? "is-active" : "is-done"}`}
+              >
+                <span className="status-pill-dot" aria-hidden="true" />
+                {tripActive ? copy.activeStatus : status}
+              </span>
+            </div>
+            <ol className="trip-timeline">
+              <li className="timeline-step is-done">
+                <span className="timeline-icon" aria-hidden="true">
+                  <Send size={14} strokeWidth={2.25} />
+                </span>
+                <div>
+                  <small>{copy.departureDone}</small>
+                  <strong>{originLabel}</strong>
+                  <span>{departureLabel}</span>
+                </div>
+              </li>
+              <li
+                className={`timeline-step ${tripActive ? "is-current" : "is-done"}`}
+              >
+                <span className="timeline-icon" aria-hidden="true">
+                  <Route size={14} strokeWidth={2.25} />
+                </span>
+                <div>
+                  <small>
+                    {trip.snapshot.status === "inside_alert_radius"
+                      ? copy.nextStop
+                      : copy.enRoute}
+                  </small>
+                  <strong>{status}</strong>
+                  <span className="timeline-accent">
+                    {etaMinutes != null
+                      ? copy.arrivingIn(etaMinutes)
+                      : lastUpdated}
+                  </span>
+                </div>
+              </li>
+              <li
+                className={`timeline-step ${tripActive ? "is-upcoming" : "is-done"}`}
+              >
+                <span className="timeline-icon" aria-hidden="true">
+                  <MapPin size={14} strokeWidth={2.25} />
+                </span>
+                <div>
+                  <small>{copy.destination}</small>
+                  <strong>
+                    {shortPlaceName(waypoint.address ?? waypoint.name)}
+                  </strong>
+                  <span>{copy.etaAt(etaClockLabel)}</span>
+                </div>
+              </li>
+            </ol>
           </div>
-        </aside>
+
+          <div className="stats-grid">
+            <div className="stat-card">
+              <Clock3 aria-hidden="true" size={18} />
+              <small>{copy.remainingTime}</small>
+              <strong>
+                {etaMinutes != null ? copy.minutesShort(etaMinutes) : "—"}
+              </strong>
+            </div>
+            <div className="stat-card">
+              <Route aria-hidden="true" size={18} />
+              <small>{copy.distance}</small>
+              <strong>{formatDistance(trip.snapshot.distanceMeters)}</strong>
+            </div>
+          </div>
+
+          <div className="shared-card">
+            <Avatar
+              name={trip.identity.displayName}
+              url={trip.identity.avatarUrl}
+            />
+            <div>
+              <small>{copy.sharedBy}</small>
+              <strong>{trip.identity.displayName}</strong>
+            </div>
+            <ShieldCheck
+              className="shared-shield"
+              aria-hidden="true"
+              size={20}
+            />
+          </div>
+
+          <div className="notice">
+            <ShieldCheck aria-hidden="true" size={18} />
+            <p>{copy.liveDisclaimer}</p>
+          </div>
+
+          {showArrivalPush &&
+            (pushState === "enabled" ? (
+              <p className="push-success">
+                <Bell aria-hidden="true" size={18} />
+                <span>{copy.notifyEnabled}</span>
+                <CheckCircle2
+                  className="push-check"
+                  aria-hidden="true"
+                  size={20}
+                />
+              </p>
+            ) : (
+              <button
+                type="button"
+                className="primary-action"
+                disabled={pushState === "subscribing" || isIosBrowser}
+                onClick={subscribe}
+              >
+                <Bell aria-hidden="true" size={20} />
+                {pushState === "denied" ? copy.notifyDenied : copy.notify}
+              </button>
+            ))}
+          {showArrivalPush && isIosBrowser && (
+            <p className="ios-note">{copy.iosInstall}</p>
+          )}
+
+          <footer className="viewer-footer">
+            <BrandLockup />
+            <div className="legal-links">
+              <Link href="/privacidad">{copy.privacy}</Link>
+              <span aria-hidden="true">·</span>
+              <Link href="/terminos">{copy.terms}</Link>
+            </div>
+          </footer>
+        </TripBottomSheet>
       </section>
     </main>
   );
