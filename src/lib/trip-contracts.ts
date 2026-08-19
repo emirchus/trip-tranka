@@ -93,7 +93,70 @@ export function mergeRoutePoints(
 ): RoutePoint[] {
   const points = new Map(current.map((point) => [point.pointSequence, point]));
   for (const point of incoming) points.set(point.pointSequence, point);
-  return [...points.values()]
-    .sort((a, b) => a.pointSequence - b.pointSequence)
-    .slice(-4000);
+  return dropRouteSpikes(
+    [...points.values()].sort(compareRoutePoints).slice(-4000),
+  );
+}
+
+function compareRoutePoints(a: RoutePoint, b: RoutePoint): number {
+  const timeA = capturedAtMs(a);
+  const timeB = capturedAtMs(b);
+  if (timeA != null && timeB != null && timeA !== timeB) return timeA - timeB;
+  return a.pointSequence - b.pointSequence;
+}
+
+function capturedAtMs(point: RoutePoint): number | null {
+  if (!point.capturedAt) return null;
+  const value = Date.parse(point.capturedAt);
+  return Number.isFinite(value) ? value : null;
+}
+
+function metersBetween(a: RoutePoint, b: RoutePoint): number {
+  const earthMeters = 6_371_000;
+  const toRad = (degrees: number) => (degrees * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const haversine =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthMeters * Math.asin(Math.min(1, Math.sqrt(haversine)));
+}
+
+/**
+ * El publisher nativo iOS llegó a intercalarse con la ruta de Flutter.
+ * Eso dibuja un zigzag A→B→A. Si C vuelve cerca de A, B era un pico GPS.
+ */
+export function dropRouteSpikes(
+  points: RoutePoint[],
+  options?: { minSpikeMeters?: number; returnRatio?: number },
+): RoutePoint[] {
+  const minSpikeMeters = options?.minSpikeMeters ?? 40;
+  const returnRatio = options?.returnRatio ?? 0.35;
+  const first = points[0];
+  const second = points[1];
+  if (points.length < 3 || !first || !second) return points;
+
+  const kept: RoutePoint[] = [first, second];
+  for (let index = 2; index < points.length; index += 1) {
+    const next = points[index];
+    if (!next) continue;
+    const previous = kept.at(-1);
+    const beforePrevious = kept.at(-2);
+    if (previous && beforePrevious) {
+      const ab = metersBetween(beforePrevious, previous);
+      const bc = metersBetween(previous, next);
+      const ac = metersBetween(beforePrevious, next);
+      if (
+        ab >= minSpikeMeters &&
+        bc >= minSpikeMeters &&
+        ac < Math.min(ab, bc) * returnRatio
+      ) {
+        kept.pop();
+      }
+    }
+    kept.push(next);
+  }
+  return kept;
 }

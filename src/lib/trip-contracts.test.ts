@@ -139,4 +139,50 @@ describe("trip sharing contracts", () => {
     expect(merged.map((point) => point.pointSequence)).toEqual([1, 2]);
     expect(merged[1].latitude).toBe(-34.61);
   });
+
+  it("orders overlapping native and flutter points by captured time", () => {
+    const origin = {
+      pointSequence: 0,
+      latitude: -34.56,
+      longitude: -58.44,
+      capturedAt: "2026-08-18T21:00:00.000Z",
+    };
+    const alongRoute = {
+      pointSequence: 2,
+      latitude: -34.561,
+      longitude: -58.438,
+      capturedAt: "2026-08-18T21:00:20.000Z",
+    };
+    const nativeCurrent = {
+      pointSequence: 1,
+      latitude: -34.575,
+      longitude: -58.41,
+      capturedAt: "2026-08-18T21:05:00.000Z",
+    };
+    const merged = mergeRoutePoints([], [nativeCurrent, alongRoute, origin]);
+    expect(merged.map((point) => point.pointSequence)).toEqual([0, 2, 1]);
+  });
+
+  it("drops GPS spikes that bounce back toward the previous point", () => {
+    const a = {
+      pointSequence: 0,
+      latitude: -34.56,
+      longitude: -58.44,
+      capturedAt: "2026-08-18T21:00:00.000Z",
+    };
+    const spike = {
+      pointSequence: 1,
+      latitude: -34.575,
+      longitude: -58.41,
+      capturedAt: "2026-08-18T21:00:10.000Z",
+    };
+    const back = {
+      pointSequence: 2,
+      latitude: -34.5602,
+      longitude: -58.4398,
+      capturedAt: "2026-08-18T21:00:20.000Z",
+    };
+    const merged = mergeRoutePoints([], [a, spike, back]);
+    expect(merged.map((point) => point.pointSequence)).toEqual([0, 2]);
+  });
 });

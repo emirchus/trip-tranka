@@ -60,7 +60,7 @@ export function TripViewer({ locale }: { locale: TrankaLocale }) {
     console.log("next", next);
     sequence.current = next.snapshot.serverSequence;
     setTrip(next);
-    setRoute(next.routePoints);
+    setRoute(mergeRoutePoints([], next.routePoints));
     await saveShareUrl(next.shareId, window.location.href);
     return next;
   }, []);
